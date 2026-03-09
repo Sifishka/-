@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>БУДНИ ИЛЮШИ 68</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --bg-color: #f0f0f0;
+            --primary-color: #333;
+            --accent-color: #ff4757;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; font-family: 'Segoe UI', sans-serif;
+            background: var(--bg-color); color: var(--primary-color);
+        }
+        #game-container { position: relative; width: 100%; height: 100%; display: flex; flex-direction: column; }
+        
+        /* Меню регистрации */
+        #auth-screen, #menu-screen {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: var(--bg-color); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 10;
+        }
+        input {
+            padding: 12px; border: 2px solid var(--primary-color);
+            border-radius: 8px; margin-bottom: 20px; outline: none; text-align: center;
+        }
+        button {
+            padding: 12px 30px; background: var(--primary-color); color: white;
+            border: none; border-radius: 8px; cursor: pointer; font-weight: bold;
+        }
+
+        /* Игровой холст */
+        canvas { display: none; background: #fff; width: 100%; height: 100%; }
+        
+        #ui {
+            position: absolute; top: 20px; left: 20px; font-weight: bold; display: none;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="auth-screen">
+        <h1>БУДНИ ИЛЮШИ 68</h1>
+        <input type="text" id="username" placeholder="Введите имя">
+        <button onclick="saveUser()">Вход</button>
+    </div>
+
+    <div id="menu-screen" style="display: none;">
+        <h2>Выбери темп</h2>
+        <button onclick="startGame(2)">Легко</button><br>
+        <button onclick="startGame(5)">Нормально</button><br>
+        <button onclick="startGame(8)">Хардкор</button>
+    </div>
+
+    <div id="ui">Счет: <span id="score">0</span></div>
+    <canvas id="gameCanvas"></canvas>
+</div>
+
+<script>
+    const tg = window.Telegram.WebApp;
+    tg.expand();
+
+    let canvas = document.getElementById('gameCanvas');
+    let ctx = canvas.getContext('2d');
+    let scoreElement = document.getElementById('score');
+    let score = 0;
+    let gameActive = false;
+    let speed = 5;
+    let player = { x: 50, y: 0, width: 30, height: 30 };
+    let obstacles = [];
+
+    function saveUser() {
+        const name = document.getElementById('username').value;
+        if(name.length > 1) {
+            document.getElementById('auth-screen').style.display = 'none';
+            document.getElementById('menu-screen').style.display = 'flex';
+        }
+    }
+
+    function startGame(difficulty) {
+        speed = difficulty;
+        document.getElementById('menu-screen').style.display = 'none';
+        document.getElementById('ui').style.display = 'block';
+        canvas.style.display = 'block';
+        
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        player.y = canvas.height - 100;
+        player.x = canvas.width / 2 - 15;
+        
+        gameActive = true;
+        animate();
+    }
+
+    // Управление тапом
+    window.addEventListener('touchstart', (e) => {
+        if(e.touches[0].clientX < canvas.width / 2) {
+            player.x -= 40;
+        } else {
+            player.x += 40;
+        }
+    });
+
+    function animate() {
+        if(!gameActive) return;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        // Игрок (минималистичный квадрат)
+        ctx.fillStyle = '#333';
+        ctx.fillRect(player.x, player.y, player.width, player.height);
+
+        // Генерация препятствий
+        if(Math.random() < 0.02) {
+            obstacles.push({ x: Math.random() * (canvas.width - 20), y: -20, w: 20, h: 20 });
+        }
+
+        // Отрисовка препятствий
+        ctx.fillStyle = '#ff4757';
+        obstacles.forEach((obs, index) => {
+            obs.y += speed;
+            ctx.fillRect(obs.x, obs.y, obs.w, obs.h);
+
+            // Коллизия
+            if (player.x < obs.x + obs.w && player.x + player.width > obs.x &&
+                player.y < obs.y + obs.h && player.y + player.height > obs.y) {
+                gameOver();
+            }
+
+            if(obs.y > canvas.height) {
+                obstacles.splice(index, 1);
+                score++;
+                scoreElement.innerText = score;
+            }
+        });
+
+        requestAnimationFrame(animate);
+    }
+
+    function gameOver() {
+        gameActive = false;
+        alert(`Финиш! Твой результат: ${score}`);
+        location.reload();
+    }
+</script>
+</body>
+</html>
